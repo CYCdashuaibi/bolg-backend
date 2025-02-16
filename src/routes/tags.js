@@ -1,26 +1,31 @@
 const express = require('express');
-const { Tag, Category } = require('../models');
 const router = express.Router();
 
+const { Tag } = require('../models');
+
+// 状态码
+const HTTP_STATUS_CODES = require('../utils/httpStatusCodes');
+const { INTERNAL_SERVER_ERROR } = HTTP_STATUS_CODES;
+
 // 获取所有标签
-router.get('/', async (req, res) => {
+router.get('/list', async (req, res) => {
     try {
-        const tags = await Tag.findAll({ include: { model: Category, as: 'category' } });
-        res.json(tags);
+        const tags = await Tag.findAll();
+        res.json({ data: tags, success: true, message: '获取所有标签成功' });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(INTERNAL_SERVER_ERROR).json({ error: err.message, success: false });
     }
 });
 
 // 创建标签
-router.post('/', async (req, res) => {
-    const { name, category_id } = req.body;
+router.post('/create', async (req, res) => {
+    const { name } = req.body;
 
     try {
-        const tag = await Tag.create({ name, category_id });
-        res.json(tag);
+        const tag = await Tag.create({ name });
+        res.json({ data: tag, success: true, message: '创建标签成功' });
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        res.status(INTERNAL_SERVER_ERROR).json({ error: err.message, success: false });
     }
 });
 

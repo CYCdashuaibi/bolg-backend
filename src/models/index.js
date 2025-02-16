@@ -6,7 +6,7 @@ const Tag = require('./tag');
 // 同步数据库
 const syncDB = async () => {
     try {
-        await sequelize.sync({ alter: true });
+        await sequelize.sync({ alter: false, force: false });
         console.log('✅ 数据库同步成功');
     } catch (error) {
         console.error('❌ 数据库同步失败:', error);

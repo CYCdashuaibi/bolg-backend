@@ -6,4 +6,12 @@ const redis = new Redis({
 	port: process.env.REDIS_PORT || 6379,
 });
 
+redis.on('error', (err) => {
+	console.error('❌ Redis 连接失败:', err);
+});
+
+redis.on('connect', () => {
+	console.log('✅ Redis 连接成功');
+});
+
 module.exports = redis;

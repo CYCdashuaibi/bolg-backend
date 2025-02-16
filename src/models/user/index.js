@@ -10,10 +10,14 @@ const User = sequelize.define(
 			autoIncrement: true,
 			primaryKey: true,
 		},
-		username: {
+		nickname: {
 			type: DataTypes.STRING(50),
 			allowNull: false,
 			unique: true,
+		},
+		avatar: {
+			type: DataTypes.STRING(255),
+			allowNull: true,
 		},
 		email: {
 			type: DataTypes.STRING(100),
@@ -26,7 +30,7 @@ const User = sequelize.define(
 		password: {
 			type: DataTypes.STRING(100),
 			allowNull: false,
-		},
+		}, 
 		role: {
 			type: DataTypes.ENUM('admin', 'user'),
 			defaultValue: 'user',

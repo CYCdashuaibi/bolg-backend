@@ -8,16 +8,18 @@ app.use(cors());
 app.use(bodyParser.json());
 // 配置解析表单数据的中间件
 // 解析 application / x-www-form-urlencoded 格式的表单数据的中间件
-app.use(express.urlencoded({ extended: false }))
+app.use(express.urlencoded({ extended: false }));
+
+// 设置静态文件目录
+app.use('/uploads', express.static('uploads'));
+
 
 /* ================= 路由相关 start =============== */
-// 导入路由
-const authRoutes = require('./routes/auth');
-const tagRoutes = require('./routes/tags');
-
-// 使用路由
-app.use('/api/auth', authRoutes);
-app.use('/api/tags', tagRoutes);
+app.use('/api/upload', require('./routes/upload'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/user', require('./routes/user'));
+app.use('/api/tag', require('./routes/tags'));
+app.use('/api/category', require('./routes/category'));
 /* ================= 路由相关 end =============== */
 
 // 服务器启动时同步数据库

@@ -8,7 +8,7 @@ const validate = (validations) => {
 		if (!errors.isEmpty()) {
 			return res
 				.status(400)
-				.json({ message: '输入验证失败', errors: errors.array() });
+				.json({ message: '输入验证失败', errors: errors.array(), success: false, validate: false });
 		}
 
 		next();

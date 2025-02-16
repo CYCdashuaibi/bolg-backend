@@ -13,6 +13,10 @@ const Category = sequelize.define(
 			type: DataTypes.STRING(100),
 			allowNull: false,
 		},
+		icon: {
+			type: DataTypes.STRING(255),
+			allowNull: true,
+		},
 		alias: {
 			type: DataTypes.STRING(100),
 			allowNull: true,
