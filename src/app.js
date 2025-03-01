@@ -20,6 +20,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/user', require('./routes/user'));
 app.use('/api/tag', require('./routes/tags'));
 app.use('/api/category', require('./routes/category'));
+app.use('/api/article', require('./routes/article'));
 /* ================= 路由相关 end =============== */
 
 // 服务器启动时同步数据库

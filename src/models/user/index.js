@@ -30,7 +30,7 @@ const User = sequelize.define(
 		password: {
 			type: DataTypes.STRING(100),
 			allowNull: false,
-		}, 
+		},
 		role: {
 			type: DataTypes.ENUM('admin', 'user'),
 			defaultValue: 'user',
@@ -39,6 +39,8 @@ const User = sequelize.define(
 	{
 		tableName: 'users',
 		timestamps: true,
+		createdAt: 'created_at',
+		updatedAt: 'updated_at',
 		hooks: {
 			beforeCreate: async (user) => {
 				const salt = await bcrypt.genSalt(10);
@@ -47,5 +49,10 @@ const User = sequelize.define(
 		},
 	},
 );
+
+User.associate = function (models) {
+	// 一个用户有多篇文章
+	User.hasMany(models.Article, { foreignKey: 'user_id' });
+};
 
 module.exports = User;
