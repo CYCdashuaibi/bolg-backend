@@ -41,6 +41,7 @@ router.get('/:id', async (req, res) => {
 			.status(NOT_FOUND)
 			.json({ message: '用户未找到', success: false });
 	}
+	delete user.password;
 	res.json({ data: user, success: true, message: '获取单个用户成功' });
 });
 
