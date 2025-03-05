@@ -31,7 +31,6 @@ const Article = sequelize.define(
 	},
 );
 
-// 建立模型关联
 Article.associate = function (models) {
 	Article.belongsToMany(models.Tag, {
 		through: 'article_tags',
@@ -41,19 +40,15 @@ Article.associate = function (models) {
 		createdAt: 'created_at',
 		updatedAt: 'updated_at',
 	});
+	// 文章所属分类
 	Article.belongsTo(models.Category, { foreignKey: 'category_id' });
-};
-
-Article.associate = function (models) {
 	// 文章所属用户
 	Article.belongsTo(models.User, { foreignKey: 'user_id' });
 
-	// 其他关联，如分类、标签等
-	Article.belongsTo(models.Category, { foreignKey: 'category_id' });
-	Article.belongsToMany(models.Tag, {
-		through: 'article_tags',
+	// 一个文章可以有多个点赞
+	Article.hasMany(models.ArticleLike, {
 		foreignKey: 'article_id',
-		otherKey: 'tag_id',
+		as: 'likes',
 	});
 };
 

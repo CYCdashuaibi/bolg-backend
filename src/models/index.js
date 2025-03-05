@@ -5,9 +5,12 @@ const User = require('./user');
 const Category = require('./category');
 const Tag = require('./tag');
 const Article = require('./article');
+const Comment = require('./comment');
+const ArticleLike = require('./articleLike');
+const CommentLike = require('./commentLike');
 
 // 这里确保 models 被正确关联
-const models = { User, Category, Tag, Article };
+const models = { User, Category, Tag, Article, Comment, ArticleLike, CommentLike };
 
 Object.values(models).forEach((model) => {
 	if (model.associate) {
@@ -25,4 +28,4 @@ const syncDB = async () => {
 	}
 };
 
-module.exports = { syncDB, User, Category, Tag, Article };
+module.exports = { syncDB, User, Category, Tag, Article, Comment, ArticleLike, CommentLike };

@@ -1,8 +1,9 @@
 const express = require('express');
 const { Op } = require('sequelize');
 
-const { Article, Tag, Category, User } = require('../models');
+const { Article, Tag, Category, User, ArticleLike } = require('../models');
 const authenticateToken = require('../middlewares/authenticate'); // 引入认证中间件
+const sequelize = require('../config/database');
 
 const router = express.Router();
 
@@ -102,13 +103,23 @@ router.get('/list', async (req, res) => {
 		// 返回分类的名称
 		includeClause.push({
 			model: Category,
-			attributes: ['name'],
+			attributes: ['id', 'name'],
 		});
 
 		// 返回文章所属用户的用户名
 		includeClause.push({
 			model: User,
 			attributes: ['id', 'nickname'],
+		});
+
+		// 文章点赞（过滤当前用户）
+		const currentUserId = req.user ? req.user.id : null;
+		includeClause.push({
+			model: ArticleLike,
+			as: 'likes',
+			attributes: ['user_id'],
+			where: currentUserId ? { user_id: currentUserId } : {},
+			required: false,
 		});
 
 		// 构造排序规则
@@ -138,9 +149,21 @@ router.get('/list', async (req, res) => {
 			limit: pageSize,
 		});
 
+		// 根据 ArticleLike 结果，构造 isLiked 标志
+		const articlesData = articles.rows.map((article) => {
+			const art = article.toJSON();
+			art.isLiked = art.likes && art.likes.length > 0;
+			// 可选择删除 likes 数组，不返回给前端
+			delete art.likes;
+			return art;
+		});
+
 		res.json({
 			success: true,
-			data: articles,
+			data: {
+				count: articles.count,
+				rows: articlesData,
+			},
 			message: '获取文章列表成功',
 		});
 	} catch (error) {
@@ -155,16 +178,24 @@ router.get('/list', async (req, res) => {
 // 获取单个文章详情接口
 router.get('/detail/:id', async (req, res) => {
 	try {
+		const currentUserId = req.user ? req.user.id : null;
 		const article = await Article.findByPk(req.params.id, {
 			include: [
-				{ 
-					model: Tag, 
-					through: { 
-						attributes: []  // Exclude the through table data
-					} 
+				{
+					model: Tag,
+					through: {
+						attributes: [], // Exclude the through table data
+					},
 				},
 				{ model: Category, attributes: ['id', 'name'] },
 				{ model: User, attributes: ['id', 'nickname'] },
+				{
+					model: ArticleLike,
+					as: 'likes',
+					attributes: ['user_id'],
+					where: currentUserId ? { user_id: currentUserId } : {},
+					required: false,
+				},
 			],
 		});
 		if (!article) {
@@ -176,9 +207,14 @@ router.get('/detail/:id', async (req, res) => {
 		// 文章查看数 +1
 		await article.increment('view_count');
 
+		const artData = article.toJSON();
+		artData.isLiked = artData.likes && artData.likes.length > 0;
+		artData.view_count = artData.view_count + 1;
+		delete artData.likes;
+
 		res.json({
 			success: true,
-			data: { ...article.toJSON(), view_count: article.view_count + 1 },
+			data: artData,
 			message: '获取文章详情成功',
 		});
 	} catch (error) {
@@ -234,6 +270,94 @@ router.delete('/delete/:id', async (req, res) => {
 		res.status(INTERNAL_SERVER_ERROR).json({
 			success: false,
 			message: '删除文章失败',
+		});
+	}
+});
+
+// 点赞文章
+router.post('/like/:id', authenticateToken, async (req, res) => {
+	const transaction = await sequelize.transaction(); // 开启事务
+	try {
+		const { id: article_id } = req.params;
+		const user_id = req.user.id;
+
+		// 检查文章是否存在
+		const article = await Article.findByPk(article_id, { transaction });
+		if (!article) {
+			return res
+				.status(NOT_FOUND)
+				.json({ success: false, message: '文章不存在' });
+		}
+
+		// 检查用户是否已点赞
+		const existingLike = await ArticleLike.findOne({
+			where: { article_id, user_id },
+			transaction,
+		});
+
+		// 如果已点赞，则取消点赞
+		if (existingLike) {
+			await transaction.rollback();
+			return res
+				.status(400)
+				.json({ success: false, message: '不可重复点赞' });
+		}
+
+		// 创建点赞记录
+		await ArticleLike.create({ article_id, user_id }, { transaction });
+		await article.increment('like_count', { by: 1, transaction });
+
+		await transaction.commit(); // 提交事务
+		res.json({ success: true, message: '点赞文章成功' });
+	} catch (error) {
+		await transaction.rollback(); // 回滚事务
+		console.error(error);
+		res.status(INTERNAL_SERVER_ERROR).json({
+			success: false,
+			message: '点赞文章失败',
+		});
+	}
+});
+
+// 取消点赞文章
+router.post('/unlike/:id', authenticateToken, async (req, res) => {
+	const transaction = await sequelize.transaction(); // 开启事务
+	try {
+		const { id: article_id } = req.params;
+		const user_id = req.user.id;
+
+		// 检查文章是否存在
+		const article = await Article.findByPk(article_id, { transaction });
+		if (!article) {
+			return res
+				.status(NOT_FOUND)
+				.json({ success: false, message: '文章不存在' });
+		}
+
+		// 查找点赞记录
+		const existingLike = await ArticleLike.findOne({
+			where: { article_id, user_id },
+			transaction,
+		});
+		if (!existingLike) {
+			await transaction.rollback();
+			return res
+				.status(400)
+				.json({ success: false, message: '尚未点赞' });
+		}
+
+		// 删除记录并更新计数
+		await existingLike.destroy({ transaction });
+		await article.decrement('like_count', { by: 1, transaction });
+
+		await transaction.commit(); // 提交事务
+		res.json({ success: true, message: '取消点赞文章成功' });
+	} catch (error) {
+		await transaction.rollback(); // 回滚事务
+		console.error(error);
+		res.status(INTERNAL_SERVER_ERROR).json({
+			success: false,
+			message: '取消点赞文章失败',
 		});
 	}
 });
