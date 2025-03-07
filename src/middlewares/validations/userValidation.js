@@ -11,17 +11,30 @@ const codeValidation = [
 ];
 
 // 注册校验规则
-const registerValidation = [
-	emailRule,
-	passwordRule,
-];
+const registerValidation = [emailRule, passwordRule];
 
 // 登录校验规则
 const loginValidation = [emailRule, passwordRule];
+
+// 修改密码校验规则
+const updatePasswordValidation = [
+	body('oldPassword').notEmpty().withMessage('旧密码不能为空'),
+	body('newPassword').notEmpty().withMessage('新密码不能为空'),
+];
+
+// 修改用户信息校验规则
+const updateProfileValidation = [
+	body('nickname')
+		.optional()
+		.isLength({ min: 2, max: 50 })
+		.withMessage('昵称长度必须在2-50个字符之间'),
+];
 
 module.exports = {
 	registerValidation,
 	loginValidation,
 	codeValidation,
 	getCodeValidation,
+	updatePasswordValidation,
+	updateProfileValidation,
 };

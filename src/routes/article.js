@@ -61,7 +61,7 @@ router.post('/create', authenticateToken, async (req, res) => {
 // 获取文章列表接口
 router.get('/list', async (req, res) => {
 	try {
-		const { keyword, category, tags, status, sort, page, limit } =
+		const { keyword, category, tags, status, user_id, sort, page, limit } =
 			req.query;
 		const pageNumber = parseInt(page, 10) || 1;
 		const pageSize = parseInt(limit, 10) || 10;
@@ -71,6 +71,11 @@ router.get('/list', async (req, res) => {
 		let whereClause = {};
 		// 文章状态：如果传入 status 则使用，否则默认只返回 published 文章
 		whereClause.status = status || 'published';
+
+		// 如果传入 user_id 则只返回该用户的文章
+		if (user_id) {
+			whereClause.user_id = user_id;
+		}
 
 		if (keyword) {
 			whereClause[Op.or] = [

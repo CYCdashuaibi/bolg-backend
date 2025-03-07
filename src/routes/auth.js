@@ -16,6 +16,7 @@ const {
 	codeValidation,
 	registerValidation,
 	loginValidation,
+	updatePasswordValidation,
 } = require('../middlewares/validations/userValidation');
 
 const authenticateToken = require('../middlewares/authenticate'); // 引入认证中间件
@@ -209,5 +210,88 @@ router.post('/logout', authenticateToken, async (req, res) => {
 		});
 	}
 });
+
+// 🔑 修改密码接口
+router.post(
+	'/update-password',
+	[authenticateToken, validate(updatePasswordValidation)],
+	async (req, res) => {
+		try {
+			const { oldPassword, newPassword } = req.body;
+			const userId = req.user.id;
+
+			// 解密密码
+			const decryptedOldPassword = String(decryptData(oldPassword));
+			const decryptedNewPassword = String(decryptData(newPassword));
+
+			// 获取用户
+			const user = await User.findByPk(userId);
+			if (!user) {
+				return res.status(NOT_FOUND).json({
+					message: '用户不存在',
+					success: false,
+				});
+			}
+
+			// 验证旧密码
+			const isMatch = await bcrypt.compare(
+				decryptedOldPassword,
+				user.password,
+			);
+			if (!isMatch) {
+				return res.status(BAD_REQUEST).json({
+					message: '旧密码错误',
+					success: false,
+				});
+			}
+
+			// 检查新密码长度
+			if (decryptedNewPassword.length < 6) {
+				return res.status(BAD_REQUEST).json({
+					message: '新密码长度至少6位',
+					success: false,
+				});
+			}
+
+			// 生成新密码的哈希值
+			const salt = await bcrypt.genSalt(10);
+			const hashedNewPassword = await bcrypt.hash(
+				decryptedNewPassword,
+				salt,
+			);
+
+			// 更新密码
+			await user.update({ password: hashedNewPassword });
+
+			// 使当前token失效
+			const token = req.headers.authorization?.split(' ')[1];
+			if (token) {
+				const decoded = jwt.decode(token);
+				const exp = decoded?.exp;
+				if (exp) {
+					const ttl = exp - Math.floor(Date.now() / 1000);
+					if (ttl > 0) {
+						await redis.setex(
+							`blacklist:${token}`,
+							ttl,
+							'password_changed',
+						);
+					}
+				}
+			}
+
+			res.json({
+				message: '密码修改成功，请重新登录',
+				success: true,
+			});
+		} catch (err) {
+			res.status(INTERNAL_SERVER_ERROR).json({
+				message: '服务器错误',
+				error: err.message,
+				success: false,
+			});
+		}
+	},
+);
 
 module.exports = router;
